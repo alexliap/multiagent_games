@@ -11,13 +11,10 @@ class GameBOne:
     def __init__(state_space: int, action_space: int):
         self.state=self.reset_state()
         
-        # self.exploration_end=int(0.8*epochs)
-        
         self.get_state()
         
-        # create the 2 agents
+        # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1=Agent(state_space, action_space)
-        # self.agent_2=Agent(state_space, action_space)
         
     def reset_state(self):
         return tuple(np.zeros((state_space, action_space)).flatten())
@@ -38,6 +35,9 @@ class GameBOne:
                 # update state based on the above action
                 self.state=self.update_state(action_2)
                 # reward agent if the move was correct, otherwise penalize him
+                
+            # update epslion for the agents
+            self.agent_1.epsilon-=linear_decay_rate
                 
             
             

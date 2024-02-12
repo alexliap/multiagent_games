@@ -1,4 +1,5 @@
 ci:
+  autoupdate_branch: 'false'
   autofix_commit_msg: "style: pre-commit fixes"
   autofix_prs: true
 

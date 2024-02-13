@@ -11,9 +11,19 @@ class GameBOne:
     """
 
     def __init__(
-        self, environment_size: tuple, possible_tile_states: tuple, actions: tuple
+        self,
+        environment_size: tuple,
+        possible_tile_states: tuple,
+        actions: tuple,
+        reward: int,
+        neg_reward: int = 0,
     ):
-        self.state = self.reset_state(environment_size)
+        self.reward = reward
+        self.neg_reward = neg_reward
+
+        self.environment_size = environment_size
+
+        self.state = self.reset_state(self.environment_size)
 
         self.get_state()
 
@@ -33,15 +43,56 @@ class GameBOne:
                 # update state based on the above action
                 self.state = self.update_state(action_1)
                 # reward agent if the move was correct, otherwise penalize him
-
+                action_legitimacy = self.check_action(action_1)
+                reward = self.give_reward(action_legitimacy)
+                # update agent's Q table
+                self.agent_1.update_table(reward)
+                # in case first action caused the episode to end
+                if self.check_board():
+                    continue
                 # get 2nd agent's action
                 action_2 = self.agent_1.action(self.state)
                 # update state based on the above action
                 self.state = self.update_state(action_2)
                 # reward agent if the move was correct, otherwise penalize him
+                action_legitimacy = self.check_action(action_2)
+                reward = self.give_reward(action_legitimacy)
+                # update agent's Q table
+                self.agent_1.update_table(reward)
 
             # update epslion for the agents
             self.agent_1.epsilon -= linear_decay_rate
+            # reset the state
+            self.state = self.reset_state(self.environment_size)
+
+    def check_action(self, action: dict):
+        # check if the action was correct or not
+        tile = action["tile"]
+        wrong_action = False
+        if tile == 0:
+            neighbors = [1, 3]
+        elif tile == 1:
+            neighbors = [0, 2, 4]
+        elif tile == 2:
+            neighbors = [1, 5]
+        elif tile == 3:
+            neighbors = [0, 6, 4]
+        elif tile == 4:
+            neighbors = [1, 7, 3, 5]
+        elif tile == 5:
+            neighbors = [2, 8, 4]
+        elif tile == 6:
+            neighbors = [3, 7]
+        elif tile == 7:
+            neighbors = [6, 4, 8]
+        else:
+            neighbors = [7, 5]
+
+        for item in neighbors:
+            if self.state[item] != action["action"]:
+                wrong_action = True
+
+        return wrong_action
 
     def check_board(self):
         # check if all tiles are colored in order to end episode
@@ -58,9 +109,8 @@ class GameBOne:
         # return it to tuple again
         return tuple(state)
 
-    # def get_state():
-    #     for i in range(self.state.shape[0]):
-    #         if np.max(state[i]) > 0:
-    #             self.colored.append(i)
-    #         else:
-    #             self.blank.append(i)
+    def give_reward(self, action_legitimacy: bool):
+        if action_legitimacy:
+            return self.reward
+        else:
+            return self.neg_reward

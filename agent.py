@@ -53,5 +53,5 @@ class Agent:
 
         return viable_actions
 
-    # def update_table(cell, action, new_value, learning_rate, gamma, reward):
-    #     self.q_table[cell][action]=self.q_table[cell][action] + learning_rate * (reward + gamma * np.max(Qtable[new_state]) - self.q_table[cell][action])
+    def update_table(self):
+        pass

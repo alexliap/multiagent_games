@@ -5,6 +5,10 @@ from agent import Agent
 
 
 class BaseGame:
+    """
+    Base Game class with methods every game is going to use regardless of the rules.
+    """
+
     def __init__(self, environment_size: tuple, reward: int, neg_reward: int = 0):
         self.reward = reward
         self.neg_reward = neg_reward
@@ -73,7 +77,7 @@ class BaseGame:
 class GameBOne(BaseGame):
     """
     This Game class refers to the B.1 game rules, where agents play one after the other and
-    have knowledge of their other agents actions.
+    have knowledge of other agents actions.
     """
 
     def __init__(
@@ -132,7 +136,71 @@ class GameBOne(BaseGame):
             self.state = self.reset_state(self.environment_size)
 
 
-game = GameBOne(
+class GameBTwo(BaseGame):
+    """
+    This Game class refers to the B.2 game rules, where agents play one after the other and
+    have only know the results of their own actions.
+    """
+
+    def __init__(
+        self,
+        environment_size: tuple,
+        possible_tile_states: tuple,
+        actions: tuple,
+        lr: float,
+        gamma: float,
+        reward: int,
+        neg_reward: int = 0,
+    ):
+        super().__init__(environment_size, reward)
+
+        # create the 2 agents (it's self play so the 2nd agent is the same one)
+        self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
+        self.agent_2 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
+
+    def play(self, epochs: int):
+        exploration_end = int(0.8 * epochs)
+        linear_decay_rate = 1 / exploration_end
+        for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
+            print(f"Epoch: {i}")
+            while self.check_board():
+                # get 1st agent's action
+                action_1 = self.agent_1.action(self.state)
+                # update state based on the above action
+                new_state = self.update_state(action_1)
+                # reward agent if the move was correct, otherwise penalize him
+                action_legitimacy = self.check_action(action_1)
+                reward = self.give_reward(action_legitimacy)
+
+                print(self.state, action_1, new_state, reward)
+                # update agent's Q table
+                self.agent_1.update_table(self.state, action_1, new_state, reward)
+                # in case first action caused the episode to end
+                self.state = new_state
+                if not self.check_board():
+                    break
+                # get 2nd agent's action
+                action_2 = self.agent_2.action(self.state)
+                # update state based on the above action
+                new_state = self.update_state(action_2)
+                # reward agent if the move was correct, otherwise penalize him
+                action_legitimacy = self.check_action(action_2)
+                reward = self.give_reward(action_legitimacy)
+                # update agent's Q table
+                self.agent_2.update_table(self.state, action_2, new_state, reward)
+
+                print(self.state, action_2, new_state, reward)
+
+                self.state = new_state
+
+            # update epsilon for the agents
+            self.agent_1.epsilon -= linear_decay_rate
+            self.agent_2.epsilon -= linear_decay_rate
+            # reset the state
+            self.state = self.reset_state(self.environment_size)
+
+
+game = GameBTwo(
     environment_size=(3, 3),
     possible_tile_states=(0, 1, 2),
     actions=(1, 2),
@@ -142,4 +210,4 @@ game = GameBOne(
     neg_reward=0,
 )
 
-game.play(2000)
+game.play(20000)

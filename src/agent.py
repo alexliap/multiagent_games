@@ -24,14 +24,14 @@ class Agent:
         # initialize Q table
         self.q_table = self.init_q_table(len(self.state_row_mapping), self.action_space)
 
-        self.epsilon = 1
+        self.epsilon = 1.0
         self.lr = lr
         self.gamma = gamma
 
     def init_q_table(self, state_space: int, action_space: int):
         return np.zeros((state_space, action_space))
 
-    def action(self, state: tuple):
+    def action(self, state: tuple[int]):
         viable_actions = self.get_viable_actions(state)
         random_num = random.uniform(0, 1)
         if random_num > self.epsilon:
@@ -51,7 +51,7 @@ class Agent:
 
         return action_dict
 
-    def get_viable_actions(self, state: tuple):
+    def get_viable_actions(self, state: tuple[int]):
         free_tiles = [i for i, x in enumerate(state) if x == 0]
         viable_actions = []
         for item in free_tiles:
@@ -60,7 +60,9 @@ class Agent:
 
         return viable_actions
 
-    def update_table(self, state: tuple, action: dict, new_state: tuple, reward: int):
+    def update_table(
+        self, state: tuple[int], action: dict, new_state: tuple[int], reward: int
+    ):
         chosen_action = (action["tile"] * 2, (action["tile"] * 2) + 1)[
             action["action"] - 1
         ]

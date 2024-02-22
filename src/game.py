@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 from tqdm import tqdm
 
@@ -200,7 +202,7 @@ class GameBTwo(BaseGame):
             # reset the state
             self.state = self.reset_state(self.environment_size)
 
-    def change_perspective(self, state: tuple, action: dict):
+    def change_perspective(self, state: tuple[int], action: dict):
         # this is called when the agent tries to color an already colored tile
         # and just keeps the state as is, but update the agent's knowledge about
         # the tile he tried to color
@@ -218,13 +220,99 @@ class GameBTwo(BaseGame):
         else:
             return True
 
-    def update_perspective(self, state: tuple, action: dict):
+    def update_perspective(self, state: tuple[int], action: dict):
         # turn state from tuple to list
-        state = list(state)
+        list_state = list(state)
         # update its value
-        state[action["tile"]] = action["action"]
+        list_state[action["tile"]] = action["action"]
         # return it to tuple again
-        return tuple(state)
+        return tuple(list_state)
+
+
+class GameAOne(BaseGame):
+    """
+    This Game class refers to the A.1 game rules, where agents act simultaneously and
+    have knowledge of other agent's actions.
+    """
+
+    def __init__(
+        self,
+        environment_size: tuple,
+        possible_tile_states: tuple,
+        actions: tuple,
+        lr: float,
+        gamma: float,
+        reward: int,
+        neg_reward: int = 0,
+    ):
+        super().__init__(environment_size, reward)
+
+        # create the 2 agents (it's self play so the 2nd agent is the same one)
+        self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
+
+    def play(self, epochs: int):
+        exploration_end = int(0.8 * epochs)
+        linear_decay_rate = 1 / exploration_end
+        for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
+            print(f"Epoch: {i}")
+            while self.check_board():
+                # get the agents' actions
+                action_1 = self.agent_1.action(self.state)
+                action_2 = self.agent_1.action(self.state)
+                # check if they try to color the same tile
+                # if they do, choose one action in random and penalize the other
+                if action_1["tile"] == action_2["tile"]:
+                    starting_state = self.state
+                    number = random.choice([1, 2])
+                    alt_reward = -1
+                    if number == 1:
+                        action = action_1
+                        wrong_action = action_2
+                    elif number == 2:
+                        action = action_2
+                        wrong_action = action_1
+                    # reward agent if the move was correct, otherwise penalize him
+                    action_legitimacy = self.check_action(action)
+                    reward = self.give_reward(action_legitimacy)
+                    # update state based on the above action
+                    self.state = self.update_state(action)
+                    # update agent's Q table
+                    self.agent_1.update_table(
+                        starting_state, action, self.state, reward
+                    )
+                    # the other agents move is penalized
+                    self.agent_1.update_table(
+                        starting_state, wrong_action, self.state, alt_reward
+                    )
+
+                    print(starting_state, action, self.state, reward)
+                    print(starting_state, wrong_action, self.state, alt_reward)
+                else:
+                    starting_state = self.state
+                    # reward agent if the move was correct, otherwise penalize him
+                    action_legitimacy_1 = self.check_action(action_1)
+                    reward_1 = self.give_reward(action_legitimacy_1)
+                    # reward agent if the move was correct, otherwise penalize him
+                    action_legitimacy_2 = self.check_action(action_2)
+                    reward_2 = self.give_reward(action_legitimacy_2)
+                    # update state based on the above actions
+                    self.state = self.update_state(action_1)
+                    self.state = self.update_state(action_2)
+
+                    self.agent_1.update_table(
+                        starting_state, action_1, self.state, reward_1
+                    )
+                    self.agent_1.update_table(
+                        starting_state, action_2, self.state, reward_2
+                    )
+
+                    print(starting_state, action_1, self.state, reward_1)
+                    print(starting_state, action_2, self.state, reward_2)
+
+            # update epsilon for the agents
+            self.agent_1.epsilon -= linear_decay_rate
+            # reset the state
+            self.state = self.reset_state(self.environment_size)
 
 
 game = GameBTwo(
@@ -237,7 +325,7 @@ game = GameBTwo(
     neg_reward=0,
 )
 
-game.play(400)
+game.play(600)
 
 # game = GameBOne(
 #     environment_size=(3, 3),
@@ -249,4 +337,16 @@ game.play(400)
 #     neg_reward=0,
 # )
 
-# game.play(1000)
+# game.play(2000)
+
+# game = GameAOne(
+#     environment_size=(3, 3),
+#     possible_tile_states=(0, 1, 2),
+#     actions=(1, 2),
+#     lr=1e-4,
+#     gamma=0.95,
+#     reward=1,
+#     neg_reward=0,
+# )
+
+# game.play(4000)

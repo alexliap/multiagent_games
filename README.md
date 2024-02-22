@@ -1,6 +1,6 @@
 # Multi Agent Games
 
-The purpose of this project is to train an agent which learns to play the following game:
+The purpose of this project is to train an agent, through self play, to play the following game:
 
 - Color the tiles of the table below
 - Available colors are two (doesn't matter which they are)

@@ -7,9 +7,7 @@ The purpose of this project is to train an agent which learns to play the follow
 - "Correct" colorization: neihgbouring (up and down) tiles are different color
 - Episode ends when all tiles are colored
 
-<div style="margin-left: auto;
-            margin-right: auto;
-            width: 30%">
+<div align="center">
 
 |     | A     | B     | C     |
 | :-: | :---: | :---: | :---: |

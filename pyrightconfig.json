@@ -1,0 +1,29 @@
+// necessary file when working on zed text editor
+// because it has pyright running on the background
+{
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__"
+  ],
+  "defineConstant": {
+    "DEBUG": true
+  },
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnboundVariable": false,
+  "pythonVersion": "3.12",
+  "pythonPlatform": "All",
+  "executionEnvironments": [
+    {
+      "root": "src/",
+      "pythonVersion": "3.12",
+      "pythonPlatform": "All",
+      "extraPaths": [
+        ".venv/lib/python3.12/site-packages/"
+      ]
+    }
+  ]
+}

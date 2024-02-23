@@ -29,13 +29,14 @@ repos:
   - id: requirements-txt-fixer
   - id: trailing-whitespace
 
-- repo: https://github.com/PyCQA/flake8
-  rev: 6.1.0
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.2.2
   hooks:
-  - id: flake8
-    # E501: line too long (black doesn't format doc strings)
-    # W503: line break before binary operator
-    # E203 whitespace before ':'
-    # E722 do not use bare 'except'
-    # W605 invalid escape sequence '\$'
-    args: ["--ignore=E501,W503,E203,E722,W605"]
+  - id: ruff
+    args: ["--fix", "--show-fixes"]
+  - id: ruff-format
+
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.2.6
+  hooks:
+  - id: codespell

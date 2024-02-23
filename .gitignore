@@ -156,5 +156,5 @@ cython_debug/
 test_datasets/
 .vscode/
 .idea/
-pyrightconfig.json
 .zed/
+.ruff_cache/

@@ -34,7 +34,7 @@ class Agent:
     def action(self, state: tuple[int, ...]):
         viable_actions = self.get_viable_actions(state)
         random_num = random.uniform(0, 1)
-        if random_num > self.epsilon:
+        if random_num > self.epsilon and np.max(state) != 0:
             # get max available value for a state
             best_index = np.argmax(
                 self.q_table[self.state_row_mapping[str(state)]][viable_actions]
@@ -44,9 +44,10 @@ class Agent:
 
             action_dict = {"tile": best_action // 2, "action": (best_action % 2) + 1}
         else:
+            random_action = random.choice(viable_actions)
             action_dict = {
-                "tile": random.choice(viable_actions) // 2,
-                "action": (random.choice(viable_actions) % 2) + 1,
+                "tile": random_action // 2,
+                "action": (random_action % 2) + 1,
             }
 
         return action_dict
@@ -59,6 +60,9 @@ class Agent:
             viable_actions.append((2 * item) + 1)
 
         return viable_actions
+
+    def get_q_table(self):
+        return self.q_table
 
     def update_table(
         self,

@@ -52,33 +52,70 @@ class BaseGame:
         # check if the action was correct or not
         # based on a particular state (applies only when the agents
         # experience different perspectives)
-        tile = action["tile"]
-        wrong_action = False
-        if tile == 0:
-            neighbors = [1, 3]
-        elif tile == 1:
-            neighbors = [0, 2, 4]
-        elif tile == 2:
-            neighbors = [1, 5]
-        elif tile == 3:
-            neighbors = [0, 6, 4]
-        elif tile == 4:
-            neighbors = [1, 7, 3, 5]
-        elif tile == 5:
-            neighbors = [2, 8, 4]
-        elif tile == 6:
-            neighbors = [3, 7]
-        elif tile == 7:
-            neighbors = [6, 4, 8]
+        if self.environment_size[0] == 2:
+            tile = action["tile"]
+            wrong_action = False
+            if tile == 0:
+                neighbors = [1, 2]
+            elif tile == 1:
+                neighbors = [0, 3]
+            elif tile == 2:
+                neighbors = [0, 3]
+            elif tile == 3:
+                neighbors = [1, 2]
         else:
-            neighbors = [7, 5]
+            tile = action["tile"]
+            wrong_action = False
+            if tile == 0:
+                neighbors = [1, 3]
+            elif tile == 1:
+                neighbors = [0, 2, 4]
+            elif tile == 2:
+                neighbors = [1, 5]
+            elif tile == 3:
+                neighbors = [0, 6, 4]
+            elif tile == 4:
+                neighbors = [1, 7, 3, 5]
+            elif tile == 5:
+                neighbors = [2, 8, 4]
+            elif tile == 6:
+                neighbors = [3, 7]
+            elif tile == 7:
+                neighbors = [6, 4, 8]
+            else:
+                neighbors = [7, 5]
 
         for item in neighbors:
-            if state[item] == action["action"]:
+            if state[item] == action["action"] or state[item] == 0:
                 wrong_action = True
                 break
 
         return wrong_action
+
+    def change_perspective(self, state: tuple[int, ...], action: dict):
+        # this is called when the agent tries to color an already colored tile
+        # and just keeps the state as is, but update the agent's knowledge about
+        # the tile he tried to color
+        new_state = state
+        new_state = list(new_state)
+        new_state[action["tile"]] = self.state[action["tile"]]
+
+        return tuple(new_state)
+
+    def check_perspective(self, state: tuple[int, ...]):
+        # check if all tiles are colored in order to end episode
+        if np.min(state) == 0:
+            return True
+        else:
+            return False
+
+    def update_perspective(self, state: tuple[int, ...], action: dict):
+        # turn state from tuple to list
+        list_state = list(state)
+        # update its value
+        list_state[action["tile"]] = action["action"]
+        # return it to tuple again
+        return tuple(list_state)
 
 
 class GameBOne(BaseGame):
@@ -99,6 +136,8 @@ class GameBOne(BaseGame):
     ):
         super().__init__(environment_size, reward)
 
+        self.last_game_state = None
+
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
 
@@ -106,6 +145,7 @@ class GameBOne(BaseGame):
         exploration_end = int(0.8 * epochs)
         linear_decay_rate = 1 / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
+            # print(i)
             cumulative_reward = 0
             while self.check_board():
                 # get 1st agent's action
@@ -137,11 +177,14 @@ class GameBOne(BaseGame):
                 self.state = new_state
 
             if i < exploration_end:
-                self.exploration_rewards.append(cumulative_reward / 9)
+                self.exploration_rewards.append(cumulative_reward)
             else:
-                self.exploitation_rewards.append(cumulative_reward / 9)
+                self.exploitation_rewards.append(cumulative_reward)
             # update epsilon for the agents
             self.agent_1.epsilon -= linear_decay_rate
+            # save last game state
+            if i == epochs - 1:
+                self.last_game_state = self.state
             # reset the state
             self.state = self.reset_state(self.environment_size)
 
@@ -172,41 +215,47 @@ class GameBTwo(BaseGame):
         linear_decay_rate = 1 / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
             cumulative_reward = 0
-            state_1 = self.state
-            state_2 = self.state
-            while self.check_perspective(state_1) and self.check_perspective(state_2):
+            perspective_1 = self.state
+            perspective_2 = self.state
+            while self.check_perspective(perspective_1) and self.check_perspective(
+                perspective_2
+            ):
                 # get 1st agent's action
-                action_1 = self.agent_1.action(state_1)
+                action_1 = self.agent_1.action(perspective_1)
                 if self.state[action_1["tile"]] != 0:
                     reward_1 = -1
-                    new_state_1 = self.change_perspective(state_1, action_1)
+                    new_perspective_1 = self.change_perspective(perspective_1, action_1)
                 else:
                     # regular sequence of functions like B.1
-                    new_state_1 = self.update_perspective(state_1, action_1)
-                    action_legitimacy = self.check_action(state_1, action_1)
+                    new_perspective_1 = self.update_perspective(perspective_1, action_1)
+                    action_legitimacy = self.check_action(perspective_1, action_1)
                     reward_1 = self.give_reward(action_legitimacy)
                     self.state = self.update_state(action_1)
                 cumulative_reward += reward_1
                 # print(state_1, action_1, new_state_1, reward_1)
                 # update agent's Q table
-                self.agent_1.update_table(state_1, action_1, new_state_1, reward_1)
-                state_1 = new_state_1
+                self.agent_1.update_table(
+                    perspective_1, action_1, new_perspective_1, reward_1
+                )
+                perspective_1 = new_perspective_1
                 # self.state = new_state_1
-                action_2 = self.agent_1.action(state_2)
+                action_2 = self.agent_1.action(perspective_2)
                 if self.state[action_2["tile"]] != 0:
                     reward_2 = -1
-                    new_state_2 = self.change_perspective(state_2, action_2)
+                    new_perspective_2 = self.change_perspective(perspective_2, action_2)
                 else:
                     # regular sequence of functions like B.1
-                    new_state_2 = self.update_perspective(state_2, action_2)
-                    action_legitimacy = self.check_action(state_2, action_2)
+                    new_perspective_2 = self.update_perspective(perspective_2, action_2)
+                    action_legitimacy = self.check_action(perspective_2, action_2)
                     reward_2 = self.give_reward(action_legitimacy)
                     self.state = self.update_state(action_2)
                 cumulative_reward += reward_2
                 # print(state_2, action_2, new_state_2, reward_2)
                 # update agent's Q table
-                self.agent_1.update_table(state_2, action_2, new_state_2, reward_2)
-                state_2 = new_state_2
+                self.agent_1.update_table(
+                    perspective_2, action_2, new_perspective_2, reward_2
+                )
+                perspective_2 = new_perspective_2
 
             if i < exploration_end:
                 self.exploration_rewards.append(cumulative_reward / 9)
@@ -216,32 +265,6 @@ class GameBTwo(BaseGame):
             self.agent_1.epsilon -= linear_decay_rate
             # reset the state
             self.state = self.reset_state(self.environment_size)
-
-    def change_perspective(self, state: tuple[int, ...], action: dict):
-        # this is called when the agent tries to color an already colored tile
-        # and just keeps the state as is, but update the agent's knowledge about
-        # the tile he tried to color
-        new_state = state
-        new_state = list(new_state)
-        new_state[action["tile"]] = self.state[action["tile"]]
-        new_state = tuple(new_state)
-
-        return new_state
-
-    def check_perspective(self, state: tuple[int, ...]):
-        # check if all tiles are colored in order to end episode
-        if np.min(state) == 0:
-            return True
-        else:
-            return False
-
-    def update_perspective(self, state: tuple[int, ...], action: dict):
-        # turn state from tuple to list
-        list_state = list(state)
-        # update its value
-        list_state[action["tile"]] = action["action"]
-        # return it to tuple again
-        return tuple(list_state)
 
 
 class GameAOne(BaseGame):
@@ -269,6 +292,7 @@ class GameAOne(BaseGame):
         exploration_end = int(0.8 * epochs)
         linear_decay_rate = 1 / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
+            # print(f'Epoch : {i}')
             cumulative_reward = 0
             while self.check_board():
                 # get the agents' actions
@@ -355,32 +379,6 @@ class GameATwo(BaseGame):
 
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
-
-    def update_perspective(self, state: tuple[int, ...], action: dict):
-        # turn state from tuple to list
-        list_state = list(state)
-        # update its value
-        list_state[action["tile"]] = action["action"]
-        # return it to tuple again
-        return tuple(list_state)
-
-    def change_perspective(self, state: tuple[int, ...], action: dict):
-        # this is called when the agent tries to color an already colored tile
-        # and just keeps the state as is, but update the agent's knowledge about
-        # the tile he tried to color
-        new_state = state
-        new_state = list(new_state)
-        new_state[action["tile"]] = self.state[action["tile"]]
-        new_state = tuple(new_state)
-
-        return new_state
-
-    def check_perspective(self, state: tuple[int, ...]):
-        # check if all tiles are colored in order to end episode
-        if np.min(state) == 0:
-            return True
-        else:
-            return False
 
     def check_move(self, state: tuple[int, ...], action: dict):
         if self.state[action["tile"]] != 0:

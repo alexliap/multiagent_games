@@ -10,14 +10,16 @@ def test_1(epoch_range, game_type: str, loops: int, filename: str):
         "possible_tile_states": (0, 1, 2),
         "actions": (1, 2),
         "lr": 1e-4,
-        "gamma": 0.95,
+        "gamma": 0.96,
         "reward": 1,
-        "neg_reward": 0,
+        "neg_reward": -1,
     }
     mean_results = []
     std_results = []
+    last_game_states = []
     for epochs in epoch_range:
         results = []
+        game_states = []
         for i in range(loops):
             if game_type == "A_1":
                 game = GameAOne(**kwargs)
@@ -28,14 +30,19 @@ def test_1(epoch_range, game_type: str, loops: int, filename: str):
             elif game_type == "B_2":
                 game = GameBTwo(**kwargs)
             game.play(epochs)
+            game_states.append(game.last_game_state)
             results.append(game.exploitation_rewards[-1])
+
+        case_2 = [1 for x in game_states if x == (1, 2, 1, 2, 1, 2, 1, 2, 1)]
+        case_1 = [1 for x in game_states if x == (2, 1, 2, 1, 2, 1, 2, 1, 2)]
 
         mean_reward = np.mean(results).item()
         std_reward = np.std(results).item()
 
         mean_results.append(mean_reward)
         std_results.append(std_reward)
-
+        last_game_states.append((len(case_1) + len(case_2)) / len(game_states))
+    print(last_game_states)
     plt.errorbar(epoch_range, mean_results, std_results, fmt="-o")
     plt.ylabel("Mean Exploitation Reward")
     plt.xlabel("Epochs")
@@ -66,8 +73,9 @@ def test_2(epoch_range, game_type: str, filename: str):
             game = GameBTwo(**kwargs)
         game.play(epochs)
         results.append(game.exploitation_rewards[-1])
+    # print(game.last_game_state)
 
-    plt.plot(epoch_range, results)
+    plt.scatter(epoch_range, results)
     plt.ylabel("Exploitation Reward")
     plt.xlabel("Epochs")
     plt.title(game_type)
@@ -75,28 +83,38 @@ def test_2(epoch_range, game_type: str, filename: str):
     plt.close()
 
 
-game_types = ["A_1", "A_2", "B_1", "B_2"]
+game_types = ["B_1"]  # , "A_2", "B_1", "B_2"]
 for game_type in game_types:
     test_1(
-        epoch_range=range(500, 10_000 + 1, 500),
+        epoch_range=range(2000, 100_000 + 1, 2000),
         game_type=game_type,
         loops=10,
-        filename="500_10000_500",
+        filename="2000_100000_2000",
     )
 
-for game_type in game_types:
-    test_2(
-        epoch_range=range(10_000, 200_000 + 1, 5_000),
-        game_type=game_type,
-        filename="10000_200000_5000",
-    )
+# for game_type in game_types:
+#     test_2(
+#         epoch_range=range(10_000, 200_000 + 1, 5_000),
+#         game_type=game_type,
+#         filename="10000_200000_5000",
+#     )
 
-# t1 = np.arange(0, len(exploration))
-# t2 = np.arange(len(exploration), epochs/100)
-
-# plt.plot(t1, exploration, label = "Exploration")
-# plt.plot(t2, exploitation, label = "Exploitation")
-# plt.ylabel("Meam Cumalitve Reward")
-# plt.xlabel("Epochs")
-# plt.legend()
-# plt.show()
+# kwargs = {
+#     "environment_size": (3, 3),
+#     "possible_tile_states": (0, 1, 2),
+#     "actions": (1, 2),
+#     "lr": 1e-4,
+#     "gamma": 0.96,
+#     "reward": 1,
+#     "neg_reward": 0,
+# }
+# game = GameBOne(**kwargs)
+# game.play(10_000)
+# a = game.agent_1.get_q_table()
+# zero_pct = len(a[a==0.0])/(a.shape[0]*a.shape[1])
+# b = game.exploitation_rewards[-1]
+# print(zero_pct*100, b, a.shape[0], a.shape[1], game.last_game_state)
+# print(a)
+# import pickle
+# with open(r"2x2_env_q_table.pkl", "wb") as output_file:
+#     pickle.dump(a, output_file)

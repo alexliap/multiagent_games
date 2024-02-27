@@ -1,5 +1,3 @@
-// necessary file when working on zed text editor
-// because it has pyright running on the background
 {
   "include": [
     "src"

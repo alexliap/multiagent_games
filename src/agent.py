@@ -34,7 +34,7 @@ class Agent:
     def action(self, state: tuple[int, ...]):
         viable_actions = self.get_viable_actions(state)
         random_num = random.uniform(0, 1)
-        if random_num > self.epsilon and np.max(state) != 0:
+        if random_num > self.epsilon:
             # get max available value for a state
             best_index = np.argmax(
                 self.q_table[self.state_row_mapping[str(state)]][viable_actions]

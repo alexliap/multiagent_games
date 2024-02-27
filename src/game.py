@@ -135,18 +135,15 @@ class GameBOne(BaseGame):
         neg_reward: int = 0,
     ):
         super().__init__(environment_size, reward)
-
         self.last_game_state = None
-        self.q_sums = []
-
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
 
     def play(self, epochs):
         exploration_end = int(0.8 * epochs)
-        linear_decay_rate = 1 / exploration_end
+        epsilon_decay_rate = 1 / exploration_end
+        alpha_decay_rate = 0.999 * self.agent_1.lr / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
-            # print(i)
             cumulative_reward = 0
             while self.check_board():
                 # get 1st agent's action
@@ -155,9 +152,21 @@ class GameBOne(BaseGame):
                 new_state = self.update_state(action_1)
                 # reward agent if the move was correct, otherwise penalize him
                 action_legitimacy = self.check_action(self.state, action_1)
-                reward = self.give_reward(action_legitimacy)
+                if new_state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or new_state == (
+                    2,
+                    1,
+                    2,
+                    1,
+                    2,
+                    1,
+                    2,
+                    1,
+                    2,
+                ):
+                    reward = 10
+                else:
+                    reward = self.give_reward(action_legitimacy)
                 cumulative_reward += reward
-                # print(self.state, action_1, new_state, reward)
                 # update agent's Q table
                 self.agent_1.update_table(self.state, action_1, new_state, reward)
                 # in case first action caused the episode to end
@@ -174,22 +183,20 @@ class GameBOne(BaseGame):
                 cumulative_reward += reward
                 # update agent's Q table
                 self.agent_1.update_table(self.state, action_2, new_state, reward)
-                # print(self.state, action_2, new_state, reward)
                 self.state = new_state
 
             if i < exploration_end:
                 self.exploration_rewards.append(cumulative_reward)
+                self.agent_1.lr -= alpha_decay_rate
             else:
                 self.exploitation_rewards.append(cumulative_reward)
             # update epsilon for the agents
-            self.agent_1.epsilon -= linear_decay_rate
+            self.agent_1.epsilon -= epsilon_decay_rate
             # save last game state
             if i == epochs - 1:
                 self.last_game_state = self.state
             # reset the state
             self.state = self.reset_state(self.environment_size)
-
-            self.q_sums.append(np.sum(np.abs(self.agent_1.get_q_table())))
 
 
 class GameBTwo(BaseGame):
@@ -209,51 +216,76 @@ class GameBTwo(BaseGame):
         neg_reward: int = 0,
     ):
         super().__init__(environment_size, reward)
-
+        self.last_game_state = None
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
 
     def play(self, epochs: int):
         exploration_end = int(0.8 * epochs)
         linear_decay_rate = 1 / exploration_end
+        alpha_decay_rate = 0.999 * self.agent_1.lr / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
             cumulative_reward = 0
             perspective_1 = self.state
             perspective_2 = self.state
-            while self.check_perspective(perspective_1) and self.check_perspective(
-                perspective_2
-            ):
+            # while self.check_perspective(perspective_1) and self.check_perspective(
+            #     perspective_2
+            # ):
+            while self.check_board():
                 # get 1st agent's action
                 action_1 = self.agent_1.action(perspective_1)
                 if self.state[action_1["tile"]] != 0:
                     reward_1 = -1
                     new_perspective_1 = self.change_perspective(perspective_1, action_1)
                 else:
-                    # regular sequence of functions like B.1
                     new_perspective_1 = self.update_perspective(perspective_1, action_1)
-                    action_legitimacy = self.check_action(perspective_1, action_1)
-                    reward_1 = self.give_reward(action_legitimacy)
+                    action_legitimacy = self.check_action(self.state, action_1)
+                    if new_perspective_1 == (
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                    ) or new_perspective_1 == (2, 1, 2, 1, 2, 1, 2, 1, 2):
+                        reward_1 = 10
+                    else:
+                        reward_1 = self.give_reward(action_legitimacy)
                     self.state = self.update_state(action_1)
                 cumulative_reward += reward_1
-                # print(state_1, action_1, new_state_1, reward_1)
                 # update agent's Q table
                 self.agent_1.update_table(
                     perspective_1, action_1, new_perspective_1, reward_1
                 )
                 perspective_1 = new_perspective_1
-                # self.state = new_state_1
+                if not self.check_board():
+                    break
                 action_2 = self.agent_1.action(perspective_2)
                 if self.state[action_2["tile"]] != 0:
                     reward_2 = -1
                     new_perspective_2 = self.change_perspective(perspective_2, action_2)
                 else:
-                    # regular sequence of functions like B.1
                     new_perspective_2 = self.update_perspective(perspective_2, action_2)
-                    action_legitimacy = self.check_action(perspective_2, action_2)
-                    reward_2 = self.give_reward(action_legitimacy)
+                    action_legitimacy = self.check_action(self.state, action_2)
+                    if new_perspective_2 == (
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                    ) or new_perspective_2 == (2, 1, 2, 1, 2, 1, 2, 1, 2):
+                        reward_2 = 10
+                    else:
+                        reward_2 = self.give_reward(action_legitimacy)
                     self.state = self.update_state(action_2)
                 cumulative_reward += reward_2
-                # print(state_2, action_2, new_state_2, reward_2)
                 # update agent's Q table
                 self.agent_1.update_table(
                     perspective_2, action_2, new_perspective_2, reward_2
@@ -261,11 +293,15 @@ class GameBTwo(BaseGame):
                 perspective_2 = new_perspective_2
 
             if i < exploration_end:
-                self.exploration_rewards.append(cumulative_reward / 9)
+                self.exploration_rewards.append(cumulative_reward)
+                self.agent_1.lr -= alpha_decay_rate
             else:
-                self.exploitation_rewards.append(cumulative_reward / 9)
+                self.exploitation_rewards.append(cumulative_reward)
             # update epsilon for the agents
             self.agent_1.epsilon -= linear_decay_rate
+            # save last game state
+            if i == epochs - 1:
+                self.last_game_state = self.state
             # reset the state
             self.state = self.reset_state(self.environment_size)
 
@@ -287,15 +323,15 @@ class GameAOne(BaseGame):
         neg_reward: int = 0,
     ):
         super().__init__(environment_size, reward)
-
+        self.last_game_state = None
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
 
     def play(self, epochs: int):
         exploration_end = int(0.8 * epochs)
         linear_decay_rate = 1 / exploration_end
+        alpha_decay_rate = 0.999 * self.agent_1.lr / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
-            # print(f'Epoch : {i}')
             cumulative_reward = 0
             while self.check_board():
                 # get the agents' actions
@@ -318,6 +354,18 @@ class GameAOne(BaseGame):
                     reward = self.give_reward(action_legitimacy)
                     # update state based on the above action
                     self.state = self.update_state(action)
+                    if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                    ):
+                        reward = 10
                     # update agent's Q table
                     self.agent_1.update_table(
                         starting_state, action, self.state, reward
@@ -326,10 +374,7 @@ class GameAOne(BaseGame):
                     self.agent_1.update_table(
                         starting_state, wrong_action, self.state, alt_reward
                     )
-                    cumulative_reward += reward
-                    cumulative_reward += alt_reward
-                    # print(starting_state, action, self.state, reward)
-                    # print(starting_state, wrong_action, self.state, alt_reward)
+                    cumulative_reward += reward + alt_reward
                 else:
                     starting_state = self.state
                     # reward agent if the move was correct, otherwise penalize him
@@ -341,6 +386,19 @@ class GameAOne(BaseGame):
                     # update state based on the above actions
                     self.state = self.update_state(action_1)
                     self.state = self.update_state(action_2)
+                    if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                    ):
+                        reward_1 = 10
+                        reward_2 = 10
 
                     self.agent_1.update_table(
                         starting_state, action_1, self.state, reward_1
@@ -348,16 +406,17 @@ class GameAOne(BaseGame):
                     self.agent_1.update_table(
                         starting_state, action_2, self.state, reward_2
                     )
-                    cumulative_reward += reward_1
-                    cumulative_reward += reward_2
-                    # print(starting_state, action_1, self.state, reward_1)
-                    # print(starting_state, action_2, self.state, reward_2)
+                    cumulative_reward += reward_1 + reward_2
             if i < exploration_end:
-                self.exploration_rewards.append(cumulative_reward / 9)
+                self.exploration_rewards.append(cumulative_reward)
+                self.agent_1.lr -= alpha_decay_rate
             else:
-                self.exploitation_rewards.append(cumulative_reward / 9)
+                self.exploitation_rewards.append(cumulative_reward)
             # update epsilon for the agents
             self.agent_1.epsilon -= linear_decay_rate
+            # save last game state
+            if i == epochs - 1:
+                self.last_game_state = self.state
             # reset the state
             self.state = self.reset_state(self.environment_size)
 
@@ -379,7 +438,7 @@ class GameATwo(BaseGame):
         neg_reward: int = 0,
     ):
         super().__init__(environment_size, reward)
-
+        self.last_game_state = None
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
 
@@ -390,7 +449,7 @@ class GameATwo(BaseGame):
         else:
             # regular sequence of functions
             new_perspective = self.update_perspective(state, action)
-            action_legitimacy = self.check_action(state, action)
+            action_legitimacy = self.check_action(self.state, action)
             reward = self.give_reward(action_legitimacy)
 
         return new_perspective, reward
@@ -398,13 +457,12 @@ class GameATwo(BaseGame):
     def play(self, epochs: int):
         exploration_end = int(0.8 * epochs)
         linear_decay_rate = 1 / exploration_end
+        alpha_decay_rate = 0.999 * self.agent_1.lr / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
             cumulative_reward = 0
             perspective_1 = self.state
             perspective_2 = self.state
-            while self.check_perspective(perspective_1) and self.check_perspective(
-                perspective_2
-            ):
+            while self.check_board():
                 # get the agents' actions
                 action_1 = self.agent_1.action(perspective_1)
                 action_2 = self.agent_1.action(perspective_2)
@@ -426,8 +484,22 @@ class GameATwo(BaseGame):
                             wrong_perspective, action
                         )
                         # reward agent if the move was correct
-                        action_legitimacy = self.check_action(perspective, action)
+                        action_legitimacy = self.check_action(self.state, action)
                         reward = self.give_reward(action_legitimacy)
+                        # update state based on the action chosen
+                        self.state = self.update_state(action)
+                        if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
+                            2,
+                            1,
+                            2,
+                            1,
+                            2,
+                            1,
+                            2,
+                            1,
+                            2,
+                        ):
+                            reward = 10
                         # update agent's Q table
                         self.agent_1.update_table(
                             perspective, action, new_perspective_1, reward
@@ -449,8 +521,22 @@ class GameATwo(BaseGame):
                         )
                         new_perspective_2 = self.update_perspective(perspective, action)
                         # reward agent if the move was correct, otherwise penalize him
-                        action_legitimacy = self.check_action(perspective, action)
+                        action_legitimacy = self.check_action(self.state, action)
                         reward = self.give_reward(action_legitimacy)
+                        # update state based on the action chosen
+                        self.state = self.update_state(action)
+                        if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
+                            2,
+                            1,
+                            2,
+                            1,
+                            2,
+                            1,
+                            2,
+                            1,
+                            2,
+                        ):
+                            reward = 10
                         # update agent's Q table
                         self.agent_1.update_table(
                             wrong_perspective,
@@ -461,12 +547,7 @@ class GameATwo(BaseGame):
                         self.agent_1.update_table(
                             perspective, action, new_perspective_2, reward
                         )
-                    # update state based on the action chosen
-                    self.state = self.update_state(action)
-                    cumulative_reward += reward
-                    cumulative_reward += alt_reward
-                    # print(perspective_1, action, new_perspective_2, reward)
-                    # print(perspective_2, wrong_action, new_perspective_2, alt_reward)
+                    cumulative_reward += reward + alt_reward
                     # update perspectives
                     perspective_1 = new_perspective_1
                     perspective_2 = new_perspective_2
@@ -479,8 +560,22 @@ class GameATwo(BaseGame):
                     new_perspective_2, reward_2 = self.check_move(
                         perspective_2, action_2
                     )
-                    # print(perspective_1, action_1, new_perspective_1, reward_1)
-                    # print(perspective_2, action_2, new_perspective_2, reward_2)
+                    # update state of game
+                    self.state = self.update_state(action_1)
+                    self.state = self.update_state(action_2)
+                    if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                        1,
+                        2,
+                    ):
+                        reward_1 = 10
+                        reward_2 = 10
                     # update agent's Q table
                     self.agent_1.update_table(
                         perspective_1, action_1, new_perspective_1, reward_1
@@ -488,21 +583,20 @@ class GameATwo(BaseGame):
                     self.agent_1.update_table(
                         perspective_2, action_2, new_perspective_2, reward_2
                     )
-                    # update state of game
-                    self.state = self.update_state(action_1)
-                    self.state = self.update_state(action_2)
-
                     perspective_1 = new_perspective_1
                     perspective_2 = new_perspective_2
 
-                    cumulative_reward += reward_1
-                    cumulative_reward += reward_2
+                    cumulative_reward += reward_1 + reward_2
 
             if i < exploration_end:
-                self.exploration_rewards.append(cumulative_reward / 9)
+                self.exploration_rewards.append(cumulative_reward)
+                self.agent_1.lr -= alpha_decay_rate
             else:
-                self.exploitation_rewards.append(cumulative_reward / 9)
+                self.exploitation_rewards.append(cumulative_reward)
             # update epsilon for the agents
             self.agent_1.epsilon -= linear_decay_rate
+            # save last game state
+            if i == epochs - 1:
+                self.last_game_state = self.state
             # reset the state and perspectives
             self.state = self.reset_state(self.environment_size)

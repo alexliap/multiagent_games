@@ -17,6 +17,7 @@ def test_1(epoch_range, game_type: str, loops: int, filename: str):
     mean_results = []
     std_results = []
     last_game_states = []
+    x_epochs = []
     for epochs in epoch_range:
         results = []
         game_states = []
@@ -42,15 +43,16 @@ def test_1(epoch_range, game_type: str, loops: int, filename: str):
         mean_results.append(mean_reward)
         std_results.append(std_reward)
         last_game_states.append((len(case_1) + len(case_2)) / len(game_states))
+        x_epochs.append(epochs)
 
         fig, (ax1, ax2) = plt.subplots(2, 1, layout="constrained", sharex=False)
 
-        ax1.errorbar(epoch_range, mean_results, std_results, fmt="-o")
-        ax1.set_ylabel("Mean Exploitation Reward")
+        ax1.errorbar(x_epochs, mean_results, std_results, fmt="-o")
+        ax1.set_ylabel("Cumulative Exploitation Reward")
         ax1.set_xlabel("Epochs")
         ax1.set_title(game_type)
 
-        ax2.plot(epoch_range, last_game_states)
+        ax2.plot(x_epochs, last_game_states)
         ax2.set_ylabel("Success Rate")
         ax2.set_xlabel("Epochs")
         ax2.set_title(game_type)

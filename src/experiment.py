@@ -12,7 +12,7 @@ def test_1(epoch_range, game_type: str, loops: int, filename: str):
         "lr": 1e-4,
         "gamma": 0.96,
         "reward": 1,
-        "neg_reward": -1,
+        "neg_reward": 0,
     }
     mean_results = []
     std_results = []
@@ -42,13 +42,19 @@ def test_1(epoch_range, game_type: str, loops: int, filename: str):
         mean_results.append(mean_reward)
         std_results.append(std_reward)
         last_game_states.append((len(case_1) + len(case_2)) / len(game_states))
-    print(last_game_states)
-    plt.errorbar(epoch_range, mean_results, std_results, fmt="-o")
-    plt.ylabel("Mean Exploitation Reward")
-    plt.xlabel("Epochs")
-    plt.title(game_type)
-    plt.savefig("experiments/test_1_" + game_type + "_" + filename)
-    plt.close()
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, layout="constrained", sharex=False)
+
+        ax1.errorbar(epoch_range, mean_results, std_results, fmt="-o")
+        ax1.set_ylabel("Mean Exploitation Reward")
+        ax1.set_xlabel("Epochs")
+        ax1.set_title(game_type)
+
+        ax2.plot(epoch_range, last_game_states)
+        ax2.set_ylabel("Success Rate")
+        ax2.set_xlabel("Epochs")
+        ax2.set_title(game_type)
+        fig.savefig("experiments/test_1_" + game_type + "_" + filename)
 
 
 def test_2(epoch_range, game_type: str, filename: str):
@@ -86,10 +92,10 @@ def test_2(epoch_range, game_type: str, filename: str):
 game_types = ["B_1"]  # , "A_2", "B_1", "B_2"]
 for game_type in game_types:
     test_1(
-        epoch_range=range(2000, 100_000 + 1, 2000),
+        epoch_range=range(4000, 400000 + 1, 4000),
         game_type=game_type,
         loops=10,
-        filename="2000_100000_2000",
+        filename="4000_400000_4000",
     )
 
 # for game_type in game_types:

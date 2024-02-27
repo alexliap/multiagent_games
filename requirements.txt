@@ -2,3 +2,4 @@ matplotlib
 numpy
 pre-commit
 tqdm
+pyright

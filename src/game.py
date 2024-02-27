@@ -137,6 +137,7 @@ class GameBOne(BaseGame):
         super().__init__(environment_size, reward)
 
         self.last_game_state = None
+        self.q_sums = []
 
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
@@ -187,6 +188,8 @@ class GameBOne(BaseGame):
                 self.last_game_state = self.state
             # reset the state
             self.state = self.reset_state(self.environment_size)
+
+            self.q_sums.append(np.sum(np.abs(self.agent_1.get_q_table())))
 
 
 class GameBTwo(BaseGame):

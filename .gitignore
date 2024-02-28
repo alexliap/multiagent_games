@@ -159,4 +159,3 @@ test_datasets/
 .zed/
 .ruff_cache/
 *.pkl
-experiments/

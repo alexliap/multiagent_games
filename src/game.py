@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 from agent import Agent
+from mapping import get_desired_states
 
 
 class BaseGame:
@@ -136,6 +137,7 @@ class GameBOne(BaseGame):
     ):
         super().__init__(environment_size, reward)
         self.last_game_state = None
+        self.desired_states = get_desired_states(environment_size, possible_tile_states)
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
 
@@ -152,17 +154,7 @@ class GameBOne(BaseGame):
                 new_state = self.update_state(action_1)
                 # reward agent if the move was correct, otherwise penalize him
                 action_legitimacy = self.check_action(self.state, action_1)
-                if new_state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or new_state == (
-                    2,
-                    1,
-                    2,
-                    1,
-                    2,
-                    1,
-                    2,
-                    1,
-                    2,
-                ):
+                if new_state in self.desired_states:
                     reward = 10
                 else:
                     reward = self.give_reward(action_legitimacy)
@@ -217,6 +209,7 @@ class GameBTwo(BaseGame):
     ):
         super().__init__(environment_size, reward)
         self.last_game_state = None
+        self.desired_states = get_desired_states(environment_size, possible_tile_states)
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
 
@@ -228,9 +221,6 @@ class GameBTwo(BaseGame):
             cumulative_reward = 0
             perspective_1 = self.state
             perspective_2 = self.state
-            # while self.check_perspective(perspective_1) and self.check_perspective(
-            #     perspective_2
-            # ):
             while self.check_board():
                 # get 1st agent's action
                 action_1 = self.agent_1.action(perspective_1)
@@ -240,17 +230,7 @@ class GameBTwo(BaseGame):
                 else:
                     new_perspective_1 = self.update_perspective(perspective_1, action_1)
                     action_legitimacy = self.check_action(self.state, action_1)
-                    if new_perspective_1 == (
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                    ) or new_perspective_1 == (2, 1, 2, 1, 2, 1, 2, 1, 2):
+                    if new_perspective_1 in self.desired_states:
                         reward_1 = 10
                     else:
                         reward_1 = self.give_reward(action_legitimacy)
@@ -270,17 +250,7 @@ class GameBTwo(BaseGame):
                 else:
                     new_perspective_2 = self.update_perspective(perspective_2, action_2)
                     action_legitimacy = self.check_action(self.state, action_2)
-                    if new_perspective_2 == (
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                    ) or new_perspective_2 == (2, 1, 2, 1, 2, 1, 2, 1, 2):
+                    if new_perspective_2 in self.desired_states:
                         reward_2 = 10
                     else:
                         reward_2 = self.give_reward(action_legitimacy)
@@ -324,6 +294,7 @@ class GameAOne(BaseGame):
     ):
         super().__init__(environment_size, reward)
         self.last_game_state = None
+        self.desired_states = get_desired_states(environment_size, possible_tile_states)
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
 
@@ -354,17 +325,7 @@ class GameAOne(BaseGame):
                     reward = self.give_reward(action_legitimacy)
                     # update state based on the above action
                     self.state = self.update_state(action)
-                    if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                    ):
+                    if self.state in self.desired_states:
                         reward = 10
                     # update agent's Q table
                     self.agent_1.update_table(
@@ -386,17 +347,7 @@ class GameAOne(BaseGame):
                     # update state based on the above actions
                     self.state = self.update_state(action_1)
                     self.state = self.update_state(action_2)
-                    if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                    ):
+                    if self.state in self.desired_states:
                         reward_1 = 10
                         reward_2 = 10
 
@@ -439,6 +390,7 @@ class GameATwo(BaseGame):
     ):
         super().__init__(environment_size, reward)
         self.last_game_state = None
+        self.desired_states = get_desired_states(environment_size, possible_tile_states)
         # create the 2 agents (it's self play so the 2nd agent is the same one)
         self.agent_1 = Agent(environment_size, possible_tile_states, actions, lr, gamma)
 
@@ -488,17 +440,7 @@ class GameATwo(BaseGame):
                         reward = self.give_reward(action_legitimacy)
                         # update state based on the action chosen
                         self.state = self.update_state(action)
-                        if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
-                            2,
-                            1,
-                            2,
-                            1,
-                            2,
-                            1,
-                            2,
-                            1,
-                            2,
-                        ):
+                        if self.state in self.desired_states:
                             reward = 10
                         # update agent's Q table
                         self.agent_1.update_table(
@@ -525,17 +467,7 @@ class GameATwo(BaseGame):
                         reward = self.give_reward(action_legitimacy)
                         # update state based on the action chosen
                         self.state = self.update_state(action)
-                        if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
-                            2,
-                            1,
-                            2,
-                            1,
-                            2,
-                            1,
-                            2,
-                            1,
-                            2,
-                        ):
+                        if self.state in self.desired_states:
                             reward = 10
                         # update agent's Q table
                         self.agent_1.update_table(
@@ -563,17 +495,7 @@ class GameATwo(BaseGame):
                     # update state of game
                     self.state = self.update_state(action_1)
                     self.state = self.update_state(action_2)
-                    if self.state == (1, 2, 1, 2, 1, 2, 1, 2, 1) or self.state == (
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                        1,
-                        2,
-                    ):
+                    if self.state in self.desired_states:
                         reward_1 = 10
                         reward_2 = 10
                     # update agent's Q table

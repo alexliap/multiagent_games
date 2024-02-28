@@ -133,7 +133,6 @@ class GameBOne(BaseGame):
         lr: float,
         gamma: float,
         reward: int,
-        neg_reward: int = 0,
     ):
         super().__init__(environment_size, reward)
         self.last_game_state = None
@@ -205,7 +204,6 @@ class GameBTwo(BaseGame):
         lr: float,
         gamma: float,
         reward: int,
-        neg_reward: int = 0,
     ):
         super().__init__(environment_size, reward)
         self.last_game_state = None
@@ -290,7 +288,6 @@ class GameAOne(BaseGame):
         lr: float,
         gamma: float,
         reward: int,
-        neg_reward: int = 0,
     ):
         super().__init__(environment_size, reward)
         self.last_game_state = None
@@ -386,7 +383,6 @@ class GameATwo(BaseGame):
         lr: float,
         gamma: float,
         reward: int,
-        neg_reward: int = 0,
     ):
         super().__init__(environment_size, reward)
         self.last_game_state = None

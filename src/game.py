@@ -23,6 +23,9 @@ class BaseGame:
         self.exploration_rewards = []
         self.exploitation_rewards = []
 
+        self.rewards_1 = []
+        self.rewards_2 = []
+
     def reset_state(self, environment_size: tuple):
         return tuple(
             np.zeros((environment_size[0], environment_size[1])).flatten().astype(int)
@@ -145,7 +148,8 @@ class GameBOne(BaseGame):
         epsilon_decay_rate = 1 / exploration_end
         alpha_decay_rate = 0.999 * self.agent_1.lr / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
-            cumulative_reward = 0
+            cumulative_reward_1 = 0
+            cumulative_reward_2 = 0
             while self.check_board():
                 # get 1st agent's action
                 action_1 = self.agent_1.action(self.state)
@@ -157,7 +161,7 @@ class GameBOne(BaseGame):
                     reward = 10
                 else:
                     reward = self.give_reward(action_legitimacy)
-                cumulative_reward += reward
+                cumulative_reward_1 += reward
                 # update agent's Q table
                 self.agent_1.update_table(self.state, action_1, new_state, reward)
                 # in case first action caused the episode to end
@@ -171,16 +175,22 @@ class GameBOne(BaseGame):
                 # reward agent if the move was correct, otherwise penalize him
                 action_legitimacy = self.check_action(self.state, action_2)
                 reward = self.give_reward(action_legitimacy)
-                cumulative_reward += reward
+                cumulative_reward_2 += reward
                 # update agent's Q table
                 self.agent_1.update_table(self.state, action_2, new_state, reward)
                 self.state = new_state
 
             if i < exploration_end:
-                self.exploration_rewards.append(cumulative_reward)
+                self.exploration_rewards.append(
+                    cumulative_reward_1 + cumulative_reward_2
+                )
                 self.agent_1.lr -= alpha_decay_rate
             else:
-                self.exploitation_rewards.append(cumulative_reward)
+                self.exploitation_rewards.append(
+                    cumulative_reward_1 + cumulative_reward_2
+                )
+            self.rewards_1.append(cumulative_reward_1)
+            self.rewards_2.append(cumulative_reward_2)
             # update epsilon for the agents
             self.agent_1.epsilon -= epsilon_decay_rate
             # save last game state
@@ -216,7 +226,8 @@ class GameBTwo(BaseGame):
         linear_decay_rate = 1 / exploration_end
         alpha_decay_rate = 0.999 * self.agent_1.lr / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
-            cumulative_reward = 0
+            cumulative_reward_1 = 0
+            cumulative_reward_2 = 0
             perspective_1 = self.state
             perspective_2 = self.state
             while self.check_board():
@@ -233,7 +244,7 @@ class GameBTwo(BaseGame):
                     else:
                         reward_1 = self.give_reward(action_legitimacy)
                     self.state = self.update_state(action_1)
-                cumulative_reward += reward_1
+                cumulative_reward_1 += reward_1
                 # update agent's Q table
                 self.agent_1.update_table(
                     perspective_1, action_1, new_perspective_1, reward_1
@@ -253,7 +264,7 @@ class GameBTwo(BaseGame):
                     else:
                         reward_2 = self.give_reward(action_legitimacy)
                     self.state = self.update_state(action_2)
-                cumulative_reward += reward_2
+                cumulative_reward_2 += reward_2
                 # update agent's Q table
                 self.agent_1.update_table(
                     perspective_2, action_2, new_perspective_2, reward_2
@@ -261,10 +272,16 @@ class GameBTwo(BaseGame):
                 perspective_2 = new_perspective_2
 
             if i < exploration_end:
-                self.exploration_rewards.append(cumulative_reward)
+                self.exploration_rewards.append(
+                    cumulative_reward_1 + cumulative_reward_2
+                )
                 self.agent_1.lr -= alpha_decay_rate
             else:
-                self.exploitation_rewards.append(cumulative_reward)
+                self.exploitation_rewards.append(
+                    cumulative_reward_1 + cumulative_reward_2
+                )
+            self.rewards_1.append(cumulative_reward_1)
+            self.rewards_2.append(cumulative_reward_2)
             # update epsilon for the agents
             self.agent_1.epsilon -= linear_decay_rate
             # save last game state
@@ -300,7 +317,8 @@ class GameAOne(BaseGame):
         linear_decay_rate = 1 / exploration_end
         alpha_decay_rate = 0.999 * self.agent_1.lr / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
-            cumulative_reward = 0
+            cumulative_reward_1 = 0
+            cumulative_reward_2 = 0
             while self.check_board():
                 # get the agents' actions
                 action_1 = self.agent_1.action(self.state)
@@ -317,7 +335,6 @@ class GameAOne(BaseGame):
                     elif number == 2:
                         action = action_2
                         wrong_action = action_1
-                    # reward agent if the move was correct, otherwise penalize him
                     action_legitimacy = self.check_action(self.state, action)
                     reward = self.give_reward(action_legitimacy)
                     # update state based on the above action
@@ -332,7 +349,12 @@ class GameAOne(BaseGame):
                     self.agent_1.update_table(
                         starting_state, wrong_action, self.state, alt_reward
                     )
-                    cumulative_reward += reward + alt_reward
+                    if number == 1:
+                        cumulative_reward_1 += reward
+                        cumulative_reward_2 += alt_reward
+                    elif number == 2:
+                        cumulative_reward_1 += alt_reward
+                        cumulative_reward_2 += reward
                 else:
                     starting_state = self.state
                     # reward agent if the move was correct, otherwise penalize him
@@ -354,12 +376,20 @@ class GameAOne(BaseGame):
                     self.agent_1.update_table(
                         starting_state, action_2, self.state, reward_2
                     )
-                    cumulative_reward += reward_1 + reward_2
+                    cumulative_reward_1 += reward_1
+                    cumulative_reward_2 += reward_2
+
             if i < exploration_end:
-                self.exploration_rewards.append(cumulative_reward)
+                self.exploration_rewards.append(
+                    cumulative_reward_1 + cumulative_reward_2
+                )
                 self.agent_1.lr -= alpha_decay_rate
             else:
-                self.exploitation_rewards.append(cumulative_reward)
+                self.exploitation_rewards.append(
+                    cumulative_reward_1 + cumulative_reward_2
+                )
+            self.rewards_1.append(cumulative_reward_1)
+            self.rewards_2.append(cumulative_reward_2)
             # update epsilon for the agents
             self.agent_1.epsilon -= linear_decay_rate
             # save last game state
@@ -407,7 +437,8 @@ class GameATwo(BaseGame):
         linear_decay_rate = 1 / exploration_end
         alpha_decay_rate = 0.999 * self.agent_1.lr / exploration_end
         for i in tqdm(range(epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}"):
-            cumulative_reward = 0
+            cumulative_reward_1 = 0
+            cumulative_reward_2 = 0
             perspective_1 = self.state
             perspective_2 = self.state
             while self.check_board():
@@ -448,6 +479,8 @@ class GameATwo(BaseGame):
                             new_perspective_2,
                             alt_reward,
                         )
+                        cumulative_reward_1 += reward
+                        cumulative_reward_2 += alt_reward
                     elif number == 2:
                         action = action_2
                         perspective = perspective_2
@@ -475,7 +508,8 @@ class GameATwo(BaseGame):
                         self.agent_1.update_table(
                             perspective, action, new_perspective_2, reward
                         )
-                    cumulative_reward += reward + alt_reward
+                        cumulative_reward_1 += alt_reward
+                        cumulative_reward_2 += reward
                     # update perspectives
                     perspective_1 = new_perspective_1
                     perspective_2 = new_perspective_2
@@ -501,16 +535,23 @@ class GameATwo(BaseGame):
                     self.agent_1.update_table(
                         perspective_2, action_2, new_perspective_2, reward_2
                     )
+                    cumulative_reward_1 += reward_1
+                    cumulative_reward_2 += reward_2
+
                     perspective_1 = new_perspective_1
                     perspective_2 = new_perspective_2
 
-                    cumulative_reward += reward_1 + reward_2
-
             if i < exploration_end:
-                self.exploration_rewards.append(cumulative_reward)
+                self.exploration_rewards.append(
+                    cumulative_reward_1 + cumulative_reward_2
+                )
                 self.agent_1.lr -= alpha_decay_rate
             else:
-                self.exploitation_rewards.append(cumulative_reward)
+                self.exploitation_rewards.append(
+                    cumulative_reward_1 + cumulative_reward_2
+                )
+            self.rewards_1.append(cumulative_reward_1)
+            self.rewards_2.append(cumulative_reward_2)
             # update epsilon for the agents
             self.agent_1.epsilon -= linear_decay_rate
             # save last game state

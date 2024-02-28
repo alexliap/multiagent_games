@@ -4,7 +4,7 @@ import numpy as np
 from game import GameAOne, GameATwo, GameBOne, GameBTwo
 
 
-def test_1(epoch_range, game_type: str, loops: int, args: dict):
+def test_1(epoch_range, game_type: str, loops: int, args: dict, filename: str = ""):
     mean_results = []
     std_results = []
     last_game_states = []
@@ -37,7 +37,7 @@ def test_1(epoch_range, game_type: str, loops: int, args: dict):
         x_epochs.append(epochs)
 
         fig, (ax1, ax2) = plt.subplots(
-            2, 1, layout="constrained", sharex=True, figsize=(8, 8)
+            2, 1, layout="constrained", sharex=True, figsize=(6, 6)
         )
 
         ax1.errorbar(x_epochs, mean_results, std_results, fmt="-o")
@@ -51,7 +51,51 @@ def test_1(epoch_range, game_type: str, loops: int, args: dict):
         ax2.set_ylim([-0.2, 1.2])
         ax2.set_ylabel("Success Rate")
         ax2.set_xlabel("Epochs")
-        fig.savefig("experiments/test_1_" + game_type)
+        fig.savefig("experiments/test_1_" + game_type + filename)
+
+
+def test_2(epochs: int, game_type: str, args: dict, window: int, filename: str = ""):
+    if game_type == "A_1":
+        game = GameAOne(**args)
+    elif game_type == "A_2":
+        game = GameATwo(**args)
+    elif game_type == "B_1":
+        game = GameBOne(**args)
+    elif game_type == "B_2":
+        game = GameBTwo(**args)
+    game.play(epochs)
+
+    agent_cum_rewards_1 = np.array(game.rewards_1)
+    agent_cum_rewards_2 = np.array(game.rewards_2)
+
+    agent_cum_rewards_1 = np.cumsum(agent_cum_rewards_1, dtype=float)
+    agent_cum_rewards_2 = np.cumsum(agent_cum_rewards_2, dtype=float)
+
+    agent_cum_rewards_1[window:] = (
+        agent_cum_rewards_1[window:] - agent_cum_rewards_1[:-window]
+    )
+    agent_cum_rewards_2[window:] = (
+        agent_cum_rewards_2[window:] - agent_cum_rewards_2[:-window]
+    )
+
+    agent_cum_rewards_1[window - 1 :] = agent_cum_rewards_1[window - 1 :] / window
+    agent_cum_rewards_2[window - 1 :] = agent_cum_rewards_2[window - 1 :] / window
+
+    plt.plot(
+        range(len(agent_cum_rewards_1[window - 1 :])), agent_cum_rewards_1[window - 1 :]
+    )
+    plt.plot(
+        range(len(agent_cum_rewards_1[window - 1 :])), agent_cum_rewards_2[window - 1 :]
+    )
+    plt.xlim([0, epochs])
+    plt.ylabel("Mean Cumulative Reward (Moving Average)")
+    plt.xlabel("Epochs")
+    plt.title(game_type)
+    plt.legend(["Agent 1", "Agent 2"])
+    plt.grid()
+
+    plt.savefig("experiments/test_2_" + game_type + filename)
+    plt.close()
 
 
 kwargs = {
@@ -61,7 +105,6 @@ kwargs = {
     "lr": 1e-1,
     "gamma": 0.96,
     "reward": 2.5,
-    "neg_reward": 0,
 }
 game_types = ["B_2", "A_2"]
 for game_type in game_types:
@@ -72,7 +115,6 @@ for game_type in game_types:
         args=kwargs,
     )
 
-
 kwargs = {
     "environment_size": (3, 3),
     "possible_tile_states": (0, 1, 2),
@@ -80,7 +122,6 @@ kwargs = {
     "lr": 1e-1,
     "gamma": 0.96,
     "reward": 1,
-    "neg_reward": 0,
 }
 game_types = ["B_1", "A_1"]
 for game_type in game_types:
@@ -91,24 +132,26 @@ for game_type in game_types:
         args=kwargs,
     )
 
-# kwargs = {
-#     "environment_size": (3, 3),
-#     "possible_tile_states": (0, 1, 2),
-#     "actions": (1, 2),
-#     "lr": 1e-1,
-#     "gamma": 0.96,
-#     "reward": 2.5,
-#     "neg_reward": 0,
-# }
-# game = GameATwo(**kwargs)
-# game.play(20)
-# a = game.agent_1.get_q_table()
-# zero_pct = len(a[a==0.0])/(a.shape[0]*a.shape[1])
-# b = game.exploitation_rewards[-1]
-# print(zero_pct*100, b, game.last_game_state, game.agent_1.lr)
-# diff = np.array(game.q_sums[1:]) - np.array(game.q_sums[:-1])
-# diff = np.mean(diff.reshape(-1, 200), axis=1)
-# plt.plot(range(diff.shape[0]), diff)
-# plt.show()
-# print(game.q_sums[-20:])
-# print(a)
+kwargs = {
+    "environment_size": (3, 3),
+    "possible_tile_states": (0, 1, 2),
+    "actions": (1, 2),
+    "lr": 1e-1,
+    "gamma": 0.96,
+    "reward": 1,
+}
+game_types = ["A_1", "B_1"]
+for game_type in game_types:
+    test_2(epochs=80000, game_type=game_type, args=kwargs, window=600)
+
+kwargs = {
+    "environment_size": (3, 3),
+    "possible_tile_states": (0, 1, 2),
+    "actions": (1, 2),
+    "lr": 1e-1,
+    "gamma": 0.96,
+    "reward": 2.5,
+}
+game_types = ["B_2", "A_2"]
+for game_type in game_types:
+    test_2(epochs=15000, game_type=game_type, args=kwargs, window=500)

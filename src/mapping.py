@@ -27,7 +27,6 @@ def get_desired_states(environment_size: tuple, possible_tile_states: tuple):
                 else:
                     desired_states[i] += [2 - i]
 
-    for i in range(len(desired_states)):
-        desired_states[i] = tuple(desired_states[i])
+    desired_states = [tuple(x) for x in desired_states]
 
     return desired_states
